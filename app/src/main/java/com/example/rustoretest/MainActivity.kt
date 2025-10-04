@@ -42,6 +42,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             RustoretestTheme {
+                val navController = rememberNavController()
+
+                // Проверяем, нужно ли показывать онбординг
+                OnboardingWrapper(navController = navController)
+
                 val tabs = remember {
                     listOf(
                         Tab("Интересное", "feed"),
@@ -52,59 +57,73 @@ class MainActivity : ComponentActivity() {
                     )
                 }
 
-                val nav = rememberNavController()
                 var selected by rememberSaveable { mutableIntStateOf(0) }
+                val backStack by navController.currentBackStackEntryAsState()
 
-                val backStack by nav.currentBackStackEntryAsState()
                 LaunchedEffect(backStack) {
                     val route = backStack?.destination?.route
                     val idx = tabs.indexOfFirst { it.route == route }
                     if (idx >= 0 && idx != selected) selected = idx
                 }
-
                 Scaffold(
                     containerColor = Color(0xFF121212),
                     contentWindowInsets = WindowInsets.safeDrawing,
                     bottomBar = {
-                        Surface(
-                            color = Color(0xFF121212),
-                            contentColor = contentColorFor(Color(0xFF121212)),
-                            tonalElevation = 0.dp,
-                            shadowElevation = 0.dp
-                        ) {
-                            MenuLine(
-                                selectedIndex = selected,
-                                onSelect = { i ->
-                                    selected = i
-                                    nav.navigate(tabs[i].route) {
-                                        popUpTo(nav.graph.startDestinationId) {
-                                            saveState = true
+                        // Показываем нижнюю панель только если это не онбординг
+                        if (backStack?.destination?.route != "onboarding") {
+                            Surface(
+                                color = Color(0xFF121212),
+                                contentColor = contentColorFor(Color(0xFF121212)),
+                                tonalElevation = 0.dp,
+                                shadowElevation = 0.dp
+                            ) {
+                                MenuLine(
+                                    selectedIndex = selected,
+                                    onSelect = { i ->
+                                        selected = i
+                                        navController.navigate(tabs[i].route) {
+                                            popUpTo(navController.graph.startDestinationId) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .navigationBarsPadding()
-                                    .height(56.dp),
-                                containerColor = Color(0xFF121212)
-                            )
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .navigationBarsPadding()
+                                        .height(56.dp),
+                                    containerColor = Color(0xFF121212)
+                                )
+                            }
                         }
                     }
                 ) { innerPadding ->
                     NavHost(
-                        navController = nav,
-                        startDestination = tabs.first().route,
+                        navController = navController,
+                        startDestination = "onboarding", // Стартуем с онбординга
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(innerPadding)
                     ) {
-                        composable("feed")   { InterestingScreen(Modifier.fillMaxSize()) }
-                        composable("apps")   { AppsScreen() }
-                        composable("games")  { GamesScreen() }
-                        composable("kiosk")  { KioskScreen() }
-                        composable("profile"){ ProfileScreen() }
+                        composable("onboarding") {
+                            OnboardingScreen(navController = navController)
+                        }
+                        composable("feed") {
+                            InterestingScreen(Modifier.fillMaxSize())
+                        }
+                        composable("apps") {
+                            AppsScreen()
+                        }
+                        composable("games") {
+                            GamesScreen()
+                        }
+                        composable("kiosk") {
+                            KioskScreen()
+                        }
+                        composable("profile") {
+                            ProfileScreen()
+                        }
                     }
                 }
             }
@@ -121,8 +140,8 @@ fun InterestingScreen(modifier: Modifier = Modifier) {
         GameSet()
     }
 }
-
-@Composable fun AppsScreen()   { Text("Приложения", color = Color.White) }
+@Composable fun AppsScreen()   { Text("Приложения", color = Color.White)
+}
 @Composable fun GamesScreen()  { Text("Игры", color = Color.White) }
 @Composable fun KioskScreen()  { Text("Киоск", color = Color.White) }
 @Composable fun ProfileScreen(){ Text("Моё", color = Color.White) }
